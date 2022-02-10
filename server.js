@@ -20,8 +20,8 @@ app.use(cors(corsOptions));
 
 const {
     SHOPIFY_ACCESS_TOKEN,
-	SHOPNAME,
-	HOST
+    SHOPNAME,
+    HOST
 } = process.env;
 
 const shopify = new Shopify({
@@ -35,7 +35,7 @@ app.use(express.urlencoded({ extended: true }));
 
 //app.use(bodyParser.raw({type: 'application/json'}));
 app.use(bodyParser.urlencoded({
-	extended: true
+    extended: true
 }));
 
 router.get('/', (req, res) => {
@@ -48,23 +48,34 @@ router.post('/customers', async (req, res) => {
 });
 
 router.post('/orders', async (req, res) => {
-	//const tag = req.body.toString();
     const customer_id = req.body.customer_id;
-	const orders = await shopify.customer.orders(customer_id, {status: 'any'});
+    const tag = req.body.tag;
+
+    const customer = await shopify.customer.get(customer_id);
+    if (!customer.tags || !customer.tags.includes(tag)) {
+        res.send([]);
+    }
+
+    const orders = await shopify.customer.orders(customer_id, {status: 'any'});
     res.send(orders);
 });
 
 router.post('/order', async (req, res) => {
     const order_id = req.body.order_id;
-	const order = await shopify.order.get(order_id);
+    const tag = req.body.tag;
+
+    const order = await shopify.order.get(order_id);
+
+    const customer = await shopify.customer.get(order.customer.id);
+    if (!customer.tags || !customer.tags.includes(tag)) {
+        res.send([]);
+    }
+
     for ( let index=0; index<order.line_items.length; index++ ) {
         let product = await shopify.product.get(order.line_items[index].product_id);
         if ( product.handle ) {
             order.line_items[index].product_handle = product.handle;
         }
-        // if ( product.image ) {
-        //     order.line_items[index].product_image = product.image;
-        // }
     }
     res.send(order);
 });
